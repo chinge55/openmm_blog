@@ -6,3 +6,4 @@ __pycache__/
 *.smi
 *.sdf
 *.xtc
+*.pdbqt
