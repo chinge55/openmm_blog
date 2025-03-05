@@ -1,15 +1,17 @@
-from rdkit import Chem
+from rdkit import Chem 
 from rdkit.Chem import AllChem
 
-# Load the ligand
-ligand = Chem.SDMolSupplier("../results/ligand.sdf")[0]
 
-# Assign stereochemistry
-Chem.AssignStereochemistry(ligand, force=True, cleanIt=True)
+# original_smiles = "CS(=O)(=O)NC1=C(C(=C(C=C1)F)C(=O)C2=CNC3=C2C=C(C=N3)Cl)F"
+template_mol = Chem.MolFromMolFile("/home/sangam/workspace/sangam/openmm_practice/temp/ligand_original.sdf")
+pose_mol = Chem.MolFromPDBFile("/home/sangam/workspace/sangam/openmm_practice/results/ligand.pdb", sanitize = False)
+# Chem.MolToPDBFile(pose_mol, "pose.pdb")
+editable_mol = Chem.EditableMol(pose_mol)
+for bond in pose_mol.GetBonds():
+    editable_mol.RemoveBond(bond.GetBeginAtomIdx(), bond.GetEndAtomIdx())
 
-# Save the updated molecule
-w = Chem.SDWriter("../results/ligand_fixed.sdf")
-w.write(ligand)
-w.close()
+pose_mol = editable_mol.GetMol()
 
-print("✅ Stereochemistry fixed and saved as 'ligand_fixed.sdf'")
+corrected_mol = AllChem.AssignBondOrdersFromTemplate(template_mol, pose_mol)
+corrected_mol = Chem.AddHs(corrected_mol, addCoords = True)
+Chem.MolToPDBFile(corrected_mol, "fixed.pdb")

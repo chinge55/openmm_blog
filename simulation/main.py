@@ -15,10 +15,11 @@ import time
 import sys
 
 # --- Input Files ---
-ligand_file = "/home/sangam/workspace/sangam/openmm_practice/results/ligand.pdb"     # Molecule file for ligand (SDF or MOL2 recommended)
+ligand_file = "/home/sangam/workspace/sangam/openmm_practice/results/ligand_final.sdf"     # Molecule file for ligand (SDF or MOL2 recommended)
+# ligand_file = "/home/sangam/workspace/sangam/openmm_practice/temp/ligand_original.sdf"     # Molecule file for ligand (SDF or MOL2 recommended)
 protein_pdb_file = "../results/protein.pdb"     # Molecule file for protein (PDB format)
 
-def prepare_ligand(pdb_file, smiles, depict=True):
+def prepare_ligand(ligand_file, depict=True):
     """
     Prepare a ligand from a PDB file via adding hydrogens and assigning bond orders. A depiction
     of the ligand before and after preparation is rendered in 2D to allow an inspection of the
@@ -41,26 +42,13 @@ def prepare_ligand(pdb_file, smiles, depict=True):
         Prepared ligand.
     """
     # split molecule
-    rdkit_mol = Chem.MolFromPDBFile(str(pdb_file))
+    rdkit_mol = Chem.MolFromMolFile(ligand_file)
     if rdkit_mol is None:
         raise ValueError(f"Could not read molecule from {pdb_file}")
-    rdkit_mol_split = Chem.rdmolops.SplitMolByPDBResidues(rdkit_mol)
-    # extract the ligand and remove any already present hydrogens
-    first_key = list(rdkit_mol_split.keys())[0]
-    ligand = rdkit_mol_split[first_key]
-    #save as image
-    ligand = Chem.RemoveHs(rdkit_mol)
-
-    # assign bond orders from template
-    reference_mol = Chem.MolFromSmiles(smiles)
-    prepared_ligand = AllChem.AssignBondOrdersFromTemplate(reference_mol, ligand)
-    prepared_ligand.AddConformer(ligand.GetConformer(0))
-
-    # protonate ligand
-    prepared_ligand = Chem.rdmolops.AddHs(prepared_ligand, addCoords=True)
+    print(f"Loaded Molecule")
+    prepared_ligand = Chem.rdmolops.AddHs(rdkit_mol, addCoords = True)
     prepared_ligand = Chem.MolFromMolBlock(Chem.MolToMolBlock(prepared_ligand))
-
-    return prepared_ligand
+    return rdkit_mol 
 
 def save_mol_as_image(mol, filename="molecule.png", size=(300, 300)):
     """Save an RDKit molecule as an image."""
@@ -229,9 +217,8 @@ def generate_forcefield(
     return forcefield
 
 if __name__ == "__main__":
-    smiles = "CS(=O)(=O)Nc1ccc(F)c(C(=O)c2c[nH]c3ncc(Cl)cc23)c1F"
     ligand_name = "UNL"
-    prepared_ligand =prepare_ligand(ligand_file, smiles)
+    prepared_ligand =prepare_ligand(ligand_file)
     omm_ligand = rdkit_to_openmm(prepared_ligand, ligand_name)
     prepared_protein = prepare_protein(protein_pdb_file)
     complex_topology, complex_positions = merge_protein_and_ligand(prepared_protein, omm_ligand)
@@ -239,51 +226,51 @@ if __name__ == "__main__":
     from openmm.app import PDBFile
     with open("complex.pdb", "w") as pdb_file:
         PDBFile.writeFile(complex_topology, complex_positions, pdb_file)
-    # forcefield = generate_forcefield(prepared_ligand)
-    # print(f'Forcefield Generated')
-    # modeller = app.Modeller(complex_topology, complex_positions)
-    # start = time.time()
-    # modeller.addSolvent(forcefield, padding=1 * unit.nanometers, ionicStrength=0.15 * unit.molar)
-    # end = time.time()
-    # print(f"Added solvent in {end-start} seconds")
-    # print(f"Added solvent to the system. Creating OpenMM system...")
-    # system = forcefield.createSystem(modeller.topology, nonbondedMethod=app.PME)
-    # integrator = mm.LangevinIntegrator(
-    #     300 * unit.kelvin, 1.0 / unit.picoseconds, 2.0 * unit.femtoseconds
-    # )
-    # simulation = app.Simulation(modeller.topology, system, integrator)
-    # simulation.context.setPositions(modeller.positions)
-    # print(f"Minimizing energy...")
-    # start_time = time.time()
-    # simulation.minimizeEnergy()
-    # end_time = time.time()
-    # print(f"Minimized energy in {end_time-start_time} seconds")
-    # with open("topology.pdb", "w") as pdb_file:
-    #     app.PDBFile.writeFile(
-    #         simulation.topology,
-    #         simulation.context.getState(getPositions=True, enforcePeriodicBox=True).getPositions(),
-    #         file=pdb_file,
-    #         keepIds=True,
-    #     )
-    # steps = 50000  # corresponds to 20 fs
-    # write_interval = 5000  # write every 2 fs
-    # log_interval = 2500  # log progress to stdout every 2 fs
-    # simulation.reporters.append(
-    # md.reporters.XTCReporter(file=str("trajectory.xtc"), reportInterval=write_interval)
-    # )
-    # simulation.reporters.append(
-    #     app.StateDataReporter(
-    #         sys.stdout,
-    #         log_interval,
-    #         step=True,
-    #         potentialEnergy=True,
-    #         temperature=True,
-    #         progress=True,
-    #         remainingTime=True,
-    #         speed=True,
-    #         totalSteps=steps,
-    #         separator="\t",
-    #     )
-    # )
-    # simulation.context.setVelocitiesToTemperature(300 * unit.kelvin)
-    # simulation.step(steps)  # perform the simulation
+    forcefield = generate_forcefield(prepared_ligand)
+    print(f'Forcefield Generated')
+    modeller = app.Modeller(complex_topology, complex_positions)
+    start = time.time()
+    modeller.addSolvent(forcefield, padding=1 * unit.nanometers, ionicStrength=0.15 * unit.molar)
+    end = time.time()
+    print(f"Added solvent in {end-start} seconds")
+    print(f"Added solvent to the system. Creating OpenMM system...")
+    system = forcefield.createSystem(modeller.topology, nonbondedMethod=app.PME)
+    integrator = mm.LangevinIntegrator(
+        300 * unit.kelvin, 1.0 / unit.picoseconds, 2.0 * unit.femtoseconds
+    )
+    simulation = app.Simulation(modeller.topology, system, integrator)
+    simulation.context.setPositions(modeller.positions)
+    print(f"Minimizing energy...")
+    start_time = time.time()
+    simulation.minimizeEnergy()
+    end_time = time.time()
+    print(f"Minimized energy in {end_time-start_time} seconds")
+    with open("topology.pdb", "w") as pdb_file:
+        app.PDBFile.writeFile(
+            simulation.topology,
+            simulation.context.getState(getPositions=True, enforcePeriodicBox=True).getPositions(),
+            file=pdb_file,
+            keepIds=True,
+        )
+    steps = 50000  # corresponds to 20 fs
+    write_interval = 5000  # write every 2 fs
+    log_interval = 2500  # log progress to stdout every 2 fs
+    simulation.reporters.append(
+    md.reporters.XTCReporter(file=str("trajectory.xtc"), reportInterval=write_interval)
+    )
+    simulation.reporters.append(
+        app.StateDataReporter(
+            sys.stdout,
+            log_interval,
+            step=True,
+            potentialEnergy=True,
+            temperature=True,
+            progress=True,
+            remainingTime=True,
+            speed=True,
+            totalSteps=steps,
+            separator="\t",
+        )
+    )
+    simulation.context.setVelocitiesToTemperature(300 * unit.kelvin)
+    simulation.step(steps)  # perform the simulation
