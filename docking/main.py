@@ -30,16 +30,18 @@ if __name__ == "__main__":
     pubchem_entries_filepath = "/home/sangam/workspace/sangam/openmm_practice/docking/pubchem_entries.csv"
     temp_path = "temp/"
     os.makedirs(temp_path, exist_ok = True)
-    fname = prody.fetchPDB("2B7A", folder = "temp/")
+    fname = prody.fetchPDB("1P4Q", folder = "temp/")
     pdb = prody.parsePDB(fname)
-    docking_experiment = core.ProteinPreparation(pdb, "A", "PTR")
-    binding_pocket_center = docking_experiment.get_binding_pocket("IZA", False)
+    docking_experiment = core.ProteinPreparation(pdb, "B", "")
+    binding_pocket_center = [-5.0, -6.0, -5.0]
+    binding_pocket_center = docking_experiment.get_binding_pocket("IZA", False, binding_pocket_center)
     condition = docking_experiment.fix_protein()
     if not condition:
         raise Exception("Protein Preparation Failed")
     logging.info("Creating pdbqt for protein")
     protein_pdb_path = f"temp/{docking_experiment.random_path_number}H.pdb"
     protein_pdbqt_path = protein_pdb_path.replace(".pdb", ".pdbqt")
+    print(f"Protein PDB Path: {protein_pdb_path}")
     core.convert_pdb_pdbqt_protein(protein_pdb_path, protein_pdbqt_path)
     df = pd.read_csv(pubchem_entries_filepath)
     docking_config = core.VinaConfig()

@@ -29,7 +29,7 @@ class ProteinPreparation:
         else:
             self.protein = self.receptor.select(f"protein and chain {self.chain}")
     
-    def get_binding_pocket(self, ligand_residue_name:str, save_ligand = True):
+    def get_binding_pocket(self, ligand_residue_name:str, save_ligand = True, pocket_center = None):
         """Get the binding pocket of the protein. Currently, binding pocket is defined as the center of mass of the ligand.
         The residue needs to be on the chain that was previously selected.
 
@@ -40,11 +40,14 @@ class ProteinPreparation:
         Returns:
             ligand_center (np.array): Center of mass of the ligand (x,y,z) coordinates
         """
-        selection_command = f"resname {ligand_residue_name} and chain {self.chain}"
-        ligand = self.receptor.select(selection_command)
-        self.default_ligand = ligand
-        self.ligand_center = ligand.getCoords().mean(axis=0)
-        logging.info(f"Center of Mass of Ligand:{self.ligand_center}")
+        if not pocket_center:
+            selection_command = f"resname {ligand_residue_name} and chain {self.chain}"
+            ligand = self.receptor.select(selection_command)
+            self.default_ligand = ligand
+            self.ligand_center = ligand.getCoords().mean(axis=0)
+            logging.info(f"Center of Mass of Ligand:{self.ligand_center}")
+        else:
+            self.ligand_center = pocket_center
         self.random_path_number = random.randint(0,1000)
         pdb_path = f"temp/{self.random_path_number}.pdb"
         logging.info(f"Saving the protein only at: {pdb_path}")
